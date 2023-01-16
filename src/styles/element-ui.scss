@@ -1,0 +1,139 @@
+// dialog
+.el-overlay-dialog {
+  .el-dialog {
+    // margin: 0 !important;
+    border-radius: 4px;
+
+    .el-dialog__header {
+      margin-right: 0;
+      border-bottom: 1px solid #EBEEF5;
+    }
+
+    // .el-dialog__body {
+    //   padding: 20px;
+    // }
+    .el-dialog__footer {
+      padding: 10px 20px;
+      border-top: 1px solid #EBEEF5;
+    }
+  }
+}
+
+// pagination
+.el-pagination {
+  float: right;
+  margin-top: 10px;
+}
+
+// el-tree
+.el-tree {
+  .el-tree-node__content {
+    height: 30px;
+    line-height: 30px;
+
+    .el-tree-node__expand-icon {
+      font-size: 14px;
+    }
+  }
+}
+
+// el-table
+.el-table {
+  &.el-table--border::before {
+    display: none;
+  }
+
+  &.el-table--border::after {
+    display: none;
+  }
+
+  &.el-table--border .el-table__border-left-patch {
+    display: none;
+  }
+
+  &.el-table--border .el-table__inner-wrapper::after {
+    display: none;
+  }
+
+  .el-table__inner-wrapper {
+    height: 100% !important;
+
+    th {
+      text-align: center;
+      background: #ebeef5;
+    }
+
+    td {
+      text-align: center;
+    }
+
+    .cell {
+      // height: 24px;
+      line-height: 24px;
+    }
+
+    tr td:first-child {
+      border-left: var(--el-table-border);
+    }
+  }
+
+  .el-table__inner-wrapper::before {
+    display: none;
+  }
+}
+
+// el-input
+.el-input {
+  --el-input-height: 36px;
+
+  &.el-input--small {
+    --el-input-height: 30px;
+  }
+}
+
+// el-select
+.el-select {
+  line-height: 36px;
+
+  .el-input {
+    --el-input-height: 36px;
+
+    // .el-input__inner {
+    //   height: 34px !important;
+    // }
+  }
+}
+
+// el-button
+.el-button.is-text:not(.is-disabled):focus-visible {
+  outline: none;
+}
+
+// el-scroll
+.el-scrollbar {
+  .el-scrollbar__wrap {
+    .el-scrollbar__view {
+       height: 100%;
+    }
+  }
+}
+
+// el-empty
+.el-empty {
+  height: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+:root {
+  // sidebar
+  --el-menu-item-height: 50px;
+
+  // --el-menu-base-level-padding: 24px;
+  // --el-menu-level-padding: 24px;
+  // --el-color-primary: #2276ff
+  // --el-color-success: #0cba70;
+  // --el-color-danger: #c6001a;
+  // --el-color-warning: #ffb02a;
+}

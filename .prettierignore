@@ -1,0 +1,6 @@
+# default
+**/.git
+**/.svn
+**/.vscode
+**/node_modules
+**/public

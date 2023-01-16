@@ -1,0 +1,14 @@
+{
+  "extends": [
+    "stylelint-config-standard-scss",
+    "stylelint-config-prettier",
+    "stylelint-config-recommended-vue/scss",
+    "stylelint-order"
+  ],
+  "rules": {
+    "selector-class-pattern": null,
+    "no-descending-specificity": null,
+    "keyframes-name-pattern": null
+  },
+  "ignoreFiles": ["node_modules", "public"]
+}

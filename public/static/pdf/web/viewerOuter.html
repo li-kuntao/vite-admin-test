@@ -1,0 +1,428 @@
+﻿<!--
+ * @Author: liyuan
+ * @Date: 2020-06-09 16:54:52
+ * @LastEditTime: 2022-10-12 09:41:59
+ * @Description: 
+-->
+<!DOCTYPE html>
+<!--
+Copyright 2015 Mozilla Foundation
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+-->
+<html>
+
+<head>
+	<title>PDF.js iframe test</title>
+	<meta charset="utf-8">
+	<style type="text/css">
+		body {
+			background: #CCCCCC;
+			margin: 0;
+			/*消除body中的留白*/
+			padding: 0;
+			text-align: center;
+		}
+
+		.sidebar {
+			padding: 10px 0;
+			position: fixed;
+			left: 0px;
+			top: 0px;
+			bottom: 0px;
+			width: 250px;
+			/* same as .content left */
+			background-color: #fff;
+			border-right: 1px solid #000;
+			z-index: 1020;
+		}
+
+		.pdfcontainer {
+			overflow: hidden;
+			position: absolute;
+			top: 0px;
+			bottom: 0px;
+			left: 200px;
+			right: 0px;
+			padding: 0px 10px;
+			overflow: auto;
+		}
+	</style>
+</head>
+
+<body onload="loadDocument()">
+	<script>
+		/**
+		 * 敏感信息配置
+		 * sensitiveWords：数组，其中包含了多个敏感词
+		 * replaceChar:敏感词替换的字符
+		*/
+		// var sensWords = { "sensitiveWords": ["万玲玲", "杨岚", "饶玉兰", "徐惠芳", "吴梦丽子", "陈丽萍", "李琳", "8600410340"], "replaceChar": "*" };
+		var sensWords = { "sensitiveWords": ["杨春玉", "杨岚", "饶玉兰", "徐惠芳", "吴梦丽子", "陈丽萍", "李琳", "8600410340"], "replaceChar": "*" };
+		// 批注信息
+		// var annotArray = null;
+		
+		var annotArray = [
+			{
+				"author": "Bill Gates",
+				"annotType": 1,
+				"createDate": "2020-06-06 14:00:00",
+				"scale": 1,
+				"id": "00000000000000000000000000000000",
+				"canvasW": 1123, "canvasH": 794, "page": 1,
+				"style": {
+					"strokeColor": "rgba(255, 255, 0, 0.5)",
+					"fillColor": "",
+					"lineW": 20
+				},
+				"position": {
+					"inkList": [100, 100, 200, 200],
+					"rect": []
+				}
+			},
+			{
+				"author": "李元", "annotType": 1, "createDate": "2020-05-26 10:05:00",
+				"canvasW": 1123, "canvasH": 794, "page": 2,
+				"scale": 1,
+				"id": "11111111111111111111111111111111",
+				"style": {
+					"strokeColor": "rgba(255, 0, 0, 0.5)",
+					"fillColor": "",
+					"lineW": 10
+				},
+				"position": {
+					"inkList": [300, 500, 500, 300],
+					"rect": []
+				}
+			},
+			{
+				"author": "李元", "annotType": 1, "createDate": "2020-05-26 10:06:00",
+				"canvasW": 1123, "canvasH": 794, "page": 2,
+				"scale": 1,
+				"id": "22222222222222222222222222222222",
+				"style": {
+					"strokeColor": "rgba(0, 255, 0, 0.5)",
+					"fillColor": "",
+					"lineW": 10
+				},
+				"position": {
+					"inkList": [300, 400, 800, 400],
+					"rect": []
+				}
+			}
+		]
+		
+		// 水印选项
+		var waterMarkOption = {
+			// 水印文字内容
+			"text": "李元 电子档案业务部",
+			// 水印文字中的时间信息
+			"time": '2020',
+			// dash表示水印文字的间隔
+			"dash": 40,
+			// 水印文字的颜色，格式为RGBA，最后一个A标识透明度，取值0~1之间
+			"color": "rgba(100, 100, 100, 0.2)",
+			// 字体大小及字体名称，单位是像素
+			"fontSize": 30,
+			"fontName": "黑体",
+			// 水印文字旋转角度：逆时针为正，顺时针为负
+			"rotation": 35,
+			// 水印文字起始位置偏移量
+			"startX": 0,
+			"startY": 0,
+			// 水印文字行距
+			"lineGap": 10
+		}
+
+		// 新增批注的样式
+		var annotConfig = {
+			"author": "张三",
+			"strokeColor": "rgba(255, 100, 0, 0.5)",
+			"lineW": 20
+		}
+
+		var pdfNames = ['I-0863389-YCY-20210309-BASY.0001.0001.10-1.pdf', 'emr-page22.pdf'];
+		//var pdfNames = ['01234.pdf', 'emr-page22.pdf'];
+		var pdfIndex = 0;
+		// 记录当前文档的状态，0为未打开，1为打开完成；
+		var docState = 0;
+		var iframe = null;
+		function loadDocument() {
+			iframe = document.createElement('iframe');
+			iframe.src = './viewer.html';
+			iframe.width = "1200";
+			iframe.height = "800";
+			iframe.id = "PDFViewer";
+			var container = document.getElementById("PDFContainer");
+			container.appendChild(iframe);
+			document.addEventListener("webviewerloaded", function () {
+				// 在webviewerloaded事件响应函数内我们可以做一些在显示框架构建完毕，但是pdf尚未render的一些工作
+				// 比如，可以在这里设置如下的一些选项
+				const viewerWnd = iframe.contentWindow;
+				const viewerDoc = iframe.contentDocument;
+				/**
+				 * 需要设置disablePreferences为true，preferences可以理解为全局配置（产品配置）， appoption可以理解为用户配置（项目配置）
+				 * disablePreferences的作用是让全局配置不生效，只使用用户配置；
+				 * 如果不设置disablePreferences为true，那么当用户配置与全局配置有相同配置的时候，全局配置覆盖用户配置
+				 * */
+				viewerWnd.PDFViewerApplicationOptions.set('disablePreferences', true);
+				// 默认关闭侧边栏
+				viewerWnd.PDFViewerApplicationOptions.set('sidebarViewOnLoad', 0);
+				// 禁止历史记录
+				viewerWnd.PDFViewerApplicationOptions.set('disableHistory', true);
+				// 设置日志级别，0：关闭所有日志，1：error，2：warn，3：info，4：debug，5：trace；
+				// 该日志级别仅影响bjca的日志，原有的pdf.js当中的日志并未影响；
+				viewerWnd.PDFViewerApplicationOptions.set('LogLevel', 5);
+				/**
+				 * The position in the document upon load.
+				 * -1 = Default (uses OpenAction if available, otherwise equal to `viewOnLoad = 0`).
+				 * 0 = The last viewed page/position.
+				 *  1 = The initial page/position.",
+				 * */
+				viewerWnd.PDFViewerApplicationOptions.set('viewOnLoad', 1);
+				// 隐藏侧边栏开关按钮
+				viewerDoc.getElementById('sidebarToggle').style.display = 'none';
+				// 隐藏搜索按钮
+				viewerDoc.getElementById('viewFind').style.display = 'none';
+				// 隐藏演示模式切换按钮
+				viewerDoc.getElementById('presentationMode').style.display = 'none';
+				// 隐藏书签栏
+				//viewerDoc.getElementById('viewBookmark').style.display = 'none';
+				// 隐藏打开文件按钮
+				viewerDoc.getElementById('openFile').style.display = 'none';
+				// 隐藏打印按钮
+				viewerDoc.getElementById('print').style.display = 'none';
+				// 隐藏下载按钮
+				viewerDoc.getElementById('download').style.display = 'none';
+				// toolbarViewerRight目前不能隐藏，否则整个右侧工具栏都会隐藏，而批注按钮也在右侧工具栏上
+				// viewerDoc.getElementById('toolbarViewerRight').style.display = 'none';
+				// 隐藏第二工具栏开关按钮
+				viewerDoc.getElementById('secondaryToolbarToggle').style.display = 'none';
+			});
+
+			document.addEventListener('webViewerInitialized', function () {
+
+				const viewer = iframe.contentWindow;
+				viewer.PDFViewerApplication.eventBus.on("documentloaded", function () {
+					var viewerContainer = iframe.contentDocument.getElementById('viewerContainer');
+					if (viewerContainer === undefined || viewerContainer === null) return;
+					// docState = 1;
+					console.debug("received doc loaded event");
+				});
+			});
+			
+			document.addEventListener('addBjcaAnnot', function (e) {
+				console.debug('receive add annot message, annot = ' + JSON.stringify(e.detail, null, 4));
+			});
+
+			document.addEventListener('delBjcaAnnot', function (e) {
+				console.debug('receive del annot message, annot id = ' + e.detail.id + ', annot page = ' + e.detail.pageNumber);
+			});
+
+			document.addEventListener('clickBjcaAnnot', function (e) {
+				console.debug('receive click annot message, annot id = ' + e.detail.id + ', annot page = ' + e.detail.pageNumber);
+			});
+
+			document.addEventListener('BJCAErrorEvent', function(e){
+				console.error('receive error message, error msg = ' + e.detail.msg + ', error code = ' + e.detail.code);
+			});
+
+			document.addEventListener('docOpened', function(e){
+				getDocInfo();
+				docState = 1;
+				console.debug('receive doc opened message');
+			});
+
+			document.addEventListener('clickSignature', function(e){
+				console.debug('receive click signature message, signature name = ' + JSON.stringify(e.detail));
+				setSignatureStatus(e.detail.pageIndex, e.detail.fieldName, true);
+			});
+		}
+
+		function nextDocument(index) {
+			if (index === undefined) {
+				pdfIndex++;
+				pdfIndex %= pdfNames.length;
+			}
+			else
+				pdfIndex = index;
+			return pdfNames[pdfIndex];
+		}
+
+		function getDocInfo(){
+			var PDFInfo = document.getElementById("PDFInfo");
+			var viewer = iframe.contentWindow;
+			if (name === undefined || name === null) return;
+			var info = "PDF总页数：" + viewer.PDFViewerApplication.pagesCount + '\n';
+			// liyuan 20-06-23 09:21:28 元数据获取的有问题
+			// if(viewer.PDFViewerApplication.metadata !== null)
+			// 	info += "PDF元数据：" + JSON.stringify(viewer.PDFViewerApplication.metadata._metadataMap) + '\n';
+			info += "PDF当前是第" + viewer.PDFViewerApplication.page + "页\n";
+			PDFInfo.value = info;
+		}
+
+		function openDocument(name, sensi, annot, wm, anConfig, page) {
+			var aa = "";
+			if(aa == null)
+				console.log("null is same as empty");
+			else
+				console.log("null is not same as empty");
+			var viewer = iframe.contentWindow;
+			if (name === undefined || name === null) return;
+
+			if (sensi !== undefined && sensi !== null)
+				viewer.PDFViewerApplicationOptions.set("sensWords", sensi);
+			else
+				viewer.PDFViewerApplicationOptions.set("sensWords", null);
+			if (annot !== undefined && annot !== null)
+				viewer.PDFViewerApplicationOptions.set("annotArray", annot);
+			else
+				viewer.PDFViewerApplicationOptions.set("annotArray", null);
+			if (wm !== undefined && wm !== null)
+				viewer.PDFViewerApplicationOptions.set("waterMarkOption", wm);
+			else
+				viewer.PDFViewerApplicationOptions.set("waterMarkOption", null);
+			if (anConfig !== undefined && anConfig !== null)
+				viewer.PDFViewerApplicationOptions.set("annotConfig", anConfig);
+			else
+				viewer.PDFViewerApplicationOptions.set("annotConfig", null);
+			
+			try{
+				viewer.PDFViewerApplication.initialBookmark = "page=" + page;
+				//viewer.PDFViewerApplication.page = 3;
+				// 让文档状态恢复为初始状态
+				docState = 0;
+				//TODO: liyuan 20-06-22 16:14:33 这里使用then的方式，仍然无法保证文档已经打开完成，why？
+				viewer.PDFViewerApplication.open(name);
+			}
+			catch(error){
+				console.error(error);
+			}
+			
+		}
+
+		function clickToDel(){
+			var anid = document.getElementById('annotId').value;
+			var anPage = document.getElementById('annotPage').value;
+			anPage = parseInt(anPage);
+			delBjcaAnnot(anid, anPage);
+		}
+
+		function delBjcaAnnot(id, page) {
+			if (docState === 0) return;
+			var viewer = iframe.contentWindow;
+			// 这里page是从1开始的页号
+			var pageView = viewer.PDFViewerApplication.pdfViewer.getPageView(page - 1);
+			var idx = pageView.lookupBjcaAnnot(id);
+			if (idx === -1) return;
+
+			pageView.deleteBjcaAnnotInfo(idx);
+			pageView.restoreInitPageSnapShot();
+			pageView.redrawPageAnnot();
+			// 删除完成，保存快照
+			pageView.saveSnapShot();
+		}
+
+		function focusAnnot(){
+			var anid = document.getElementById('annotId').value;
+			var anPage = document.getElementById('annotPage').value;
+			anPage = parseInt(anPage);
+			focusBjcaAnnot(anid, anPage);
+		}
+
+		function focusBjcaAnnot(id, page){
+			if (docState === 0) return;
+			var viewer = iframe.contentWindow;
+			// 这里page是从1开始的页号
+			var pageView = viewer.PDFViewerApplication.pdfViewer.getPageView(page - 1);
+			pageView.setFocusBjcaAnnot(id);
+		}
+
+		function firstPage(){
+			if(docState === 0)return;
+			var viewer = iframe.contentWindow;
+			viewer.PDFViewerApplication.page = 1;
+		}
+
+		function lastPage(){
+			if(docState === 0)return;
+			var viewer = iframe.contentWindow;
+			var pageTotal = viewer.PDFViewerApplication.pagesCount;
+			viewer.PDFViewerApplication.page = pageTotal;
+		}
+
+		function prevPage(){
+			if(docState === 0)return;
+			var viewer = iframe.contentWindow;
+			var curPage = viewer.PDFViewerApplication.page;
+			//  liyuan 20-06-23 09:48:33 如果已经是第一页，可以打开前一个pdf，我这里直接返回了
+			if(curPage === 1)return;
+			viewer.PDFViewerApplication.page = curPage - 1;
+		}
+
+		function nextPage(){
+			if(docState === 0)return;
+			var viewer = iframe.contentWindow;
+			var pageTotal = viewer.PDFViewerApplication.pagesCount;
+			var curPage = viewer.PDFViewerApplication.page;
+			//  liyuan 20-06-23 09:49:21 如果已经是最后一页，可以打开下一个pdf，我这里直接返回了
+			if(curPage === pageTotal)return;
+			viewer.PDFViewerApplication.page = curPage + 1;
+		}
+
+		function setSignatureStatus(pageIndex, sigName, status) {
+			if (docState === 0) return;
+			var viewer = iframe.contentWindow;
+			// 这里page是从1开始的页号
+			var pageView = viewer.PDFViewerApplication.pdfViewer.getPageView(pageIndex - 1);
+			pageView.setSignatureStatus(sigName);
+			// pageView.redrawPageAnnot();
+			// 删除完成，保存快照
+			// pageView.saveSnapShot();
+		}
+
+	</script>
+	<!-- <iframe frameborder="1" width="1200" height="800" src="./viewer.html" scrolling="no" id="PDFViewer"	onload="pdfjsLoad()"></iframe> -->
+
+	<div id="SideBar" class="sidebar">
+		<a href="###脱敏" onclick="openDocument(nextDocument(0), sensWords, annotArray, null, annotConfig, 1)">脱敏测试</a>
+		<br />
+		<a href="###水印" onclick="openDocument(nextDocument(1), null, annotArray, waterMarkOption, annotConfig, 5)">水印测试</a>
+		<br />
+		<input type='text' id='annotId' size="32" >
+		<br />
+		<input type='text' id='annotPage' size="4" >
+		<br />
+		<button  type='button' onclick="clickToDel()">删除批注</button>
+		<br />
+		<button  type='button' onclick="focusAnnot()">设置焦点批注</button>
+		<br /><br />
+		<textarea id = "PDFInfo" rows="3" cols="35" readonly="readonly">
+		</textarea>
+		<br />
+		<button  type='button' onclick="firstPage()">首页</button>
+		<br />
+		<button  type='button' onclick="prevPage()">上一页</button>
+		<br />
+		<button  type='button' onclick="nextPage()">下一页</button>
+		<br />
+		<button  type='button' onclick="lastPage()">尾页</button>
+	</div>
+	<div id="PDFContainer" class="pdfcontainer">
+		<h1>PDF内容</h1>
+	</div>
+</body>
+<script>
+</script>
+
+</html>
